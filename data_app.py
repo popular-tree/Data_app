@@ -346,18 +346,20 @@ def show_sales_analysis():
 
     with col1:
         # 날짜 범위 필터
-        sales_df['date'] = pd.to_datetime(sales_df['date'])
-        min_date = sales_df['date'].min().date()
-        max_date = sales_df['date'].max().date()
+        sales_df['date'] = pd.to_datetime(sales_df['date']) # 날짜형 데이터 변환
+        min_date = sales_df['date'].min().date() # date 안에 오래된 날짜 출력
+        max_date = sales_df['date'].max().date() # 최신 날짜 출력
         
         date_range = st.date_input("날짜 범위 선택",
-                                 [min_date, max_date],
+                                 [min_date, max_date], # 기본값으로 오래된 날짜, 최신 날짜 범위 설정
                                  min_value=min_date,
                                  max_value=max_date)
+        # (date1, date2)의 튜플 형태로 반환하거나
+        # [date1, date2]의 리스트 형태로 반환
         
         # df[조건&] - 필터링
         if len(date_range) == 2:
-            start_date, end_date = date_range
+            start_date, end_date = date_range # [date1, date2] 알아서 값 넣어줌
             mask = (sales_df['date'].dt.date >= start_date) & (sales_df['date'].dt.date <= end_date)
             sales_df = sales_df[mask]
     
