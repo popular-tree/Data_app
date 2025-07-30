@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np # 수치 계산
 import pandas as pd # 표 생성, 그룹화, 정렬, 병합, 엑셀에서 쓰는 기능
 from datetime import datetime, timedelta # 날짜, 시간 관련
+import plotly.express as px
 
 st.set_page_config(
     page_title='Data Lab',
@@ -354,6 +355,7 @@ def show_sales_analysis():
                                  min_value=min_date,
                                  max_value=max_date)
         
+        # df[조건&] - 필터링
         if len(date_range) == 2:
             start_date, end_date = date_range
             mask = (sales_df['date'].dt.date >= start_date) & (sales_df['date'].dt.date <= end_date)
@@ -374,6 +376,69 @@ def show_sales_analysis():
         
         if selected_region != "전체":
             sales_df = sales_df[sales_df['region'] == selected_region]
+    
+    # 시각화 섹션
+    st.subheader("판매 데이터 시각화")
+    
+    # 날짜별 집계 데이터
+    sales_df['month'] = sales_df['date'].dt.strftime('%Y-%m')
+    monthly_data = sales_df.groupby('month').agg({
+        'total': 'sum',
+        'quantity': 'sum'
+    }).reset_index()
+    
+    # 시계열 차트 표시
+    viz_option = st.radio("시각화 유형", ["시계열 차트", "제품별 비교", "상관 관계 분석"], horizontal=True)
+    
+    if viz_option == "시계열 차트":
+        metric = st.radio("표시할 지표", ["총 매출", "판매 수량"], horizontal=True)
+
+        if metric == "총 매출":
+            monthly_data['month'] = pd.to_datetime(monthly_data['month'])
+            fig = px.line(monthly_data, x='month', y='total',
+                        labels={'month': '월', 'total': '총 매출액'},
+                        title='월별 총 매출 추이')
+        else:
+            fig = px.line(monthly_data, x='month', y='quantity',
+                        labels={'month': '월', 'quantity': '판매 수량'},
+                        title='월별 판매 수량 추이')
+            
+        fig.update_xaxes(
+            tickformat='%Y-%m',
+            dtick='M1'
+        )
+        
+        fig.update_traces(
+            line=dict(width=3),
+            marker=dict(size=8)
+        )
+        
+        fig.update_layout(
+            xaxis_title="월",
+            yaxis_title="총 매출액" if metric == "총 매출" else "판매 수량",
+            hovermode='x unified'
+        )
+            
+        st.plotly_chart(fig, use_container_width=True)        
+
+    elif viz_option == "제품별 비교":
+        product_data = sales_df.groupby('product_name').agg({
+            'total': 'sum',
+            'quantity': 'sum'
+        }).reset_index().sort_values('total', ascending=False)
+        
+        fig = px.bar(product_data.head(10), x='product_name', y='total',
+                    title='제품별 총 매출 (상위 10개)',
+                    color='total',
+                    labels={'product_name': '제품', 'total': '총 매출액'})
+        st.plotly_chart(fig, use_container_width=True)
+        
+    elif viz_option == "상관 관계 분석":        
+        fig = px.scatter(sales_df, x='price', y='quantity',
+                        color='category',
+                        labels={'price': '제품 가격', 'quantity': '판매 수량'},
+                        title='제품 가격과 판매량의 상관 관계')
+        st.plotly_chart(fig, use_container_width=True)
 
 if st.session_state.active_menu == '대시보드':
     show_dashboard_content()
